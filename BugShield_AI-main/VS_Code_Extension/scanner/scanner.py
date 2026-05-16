@@ -1,0 +1,52 @@
+import os
+import sys
+import json
+from secret_scanner import scan_file
+from dependency_scanner import scan_requirements
+
+
+def scan_project(project_path):
+
+    results = []
+
+    for root, dirs, files in os.walk(project_path):
+
+        for file in files:
+
+            if file.endswith((".py", ".js", ".ts", ".env", ".yaml", ".yml", ".json", ".txt")):
+
+                file_path = os.path.join(root, file)
+
+                if file == "requirements.txt":
+                    issues = scan_requirements(file_path)
+                    results.extend(issues)
+
+                issues = scan_file(file_path)
+
+                results.extend(issues)
+
+    return results
+
+
+if __name__ == "__main__":
+
+    if len(sys.argv) < 2:
+        # Default to test_project2 for easy testing
+        project_paths = [os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "test_project2"))]
+        if not os.path.exists(project_paths[0]):
+            print(json.dumps([{"file": "scanner.py", "line": 0, "issue": "Missing project path argument", "severity": "HIGH"}], indent=2))
+            sys.exit(1)
+    else:
+        project_paths = sys.argv[1:]
+
+    all_findings = []
+    for project_path in project_paths:
+        if os.path.exists(project_path):
+            findings = scan_project(project_path)
+            all_findings.extend(findings)
+
+    print(json.dumps(all_findings, indent=2))
+
+    total_issues = len(all_findings)
+    score = max(0, 100 - total_issues * 5)
+    print(f"\nSecurity Score: {score}/100")
